@@ -1,66 +1,60 @@
 ---
 name: weavr-glossary
-description: Glossary of Weavr platform terms and concepts. Use to understand Weavr-specific terminology like programmes, managed accounts, managed cards, KYC/KYB, step-up authentication, and Secure UI.
+description: Explain Weavr platform terminology, including programmes and workspaces, profiles, customers and users, managed instruments, trusted payees, verification, and authentication tokens. Use when interpreting Weavr docs or integration concepts.
 curated: true
-version: 1.0.0
+version: 1.1.0
 ---
 
-# Weavr Glossary
+# Weavr glossary
 
-Key terms and concepts used across the Weavr platform.
+Source glossary: https://docs.weavr.io/glossary/
 
-## Identities
+## Platform and ownership
 
-- **Corporate** — A business entity onboarded onto the Weavr platform. Has a root user and may have authorized users. Requires KYB verification.
-- **Consumer** — An individual (non-business) user onboarded onto the platform. Requires KYC verification.
-- **Root user** — The primary user created when a corporate or consumer identity is registered. Has full permissions.
-- **Authorized user** — An additional user added to a corporate identity with specific permissions (e.g., view-only, transaction approval).
+- **Workspace**: your company's Embedder Portal account, containing team members and one or more programmes. Portal roles are workspace-wide.
+- **Programme**: a Weavr configuration for your app. Customers, instruments, and transactions belong to a programme; sandbox and live have separate configurations.
+- **Profile**: a template for a resource type, such as a corporate, consumer, account, card, transfer, or OWT. Its Profile ID selects configured currencies, limits, countries, branding, and fees.
+- **Customer / identity**: a corporate or consumer that owns financial instruments. Identity is the older term still used in API names.
+- **Corporate**: a business customer that must complete KYB.
+- **Consumer**: an individual customer that must complete KYC.
+- **Root user**: the primary user created with a customer. A corporate root user is a legal representative and has the Admin role.
+- **Authorized user**: a person invited to act for a customer, without becoming its legal owner. One corporate user can have access to multiple corporate identities with different roles.
+- **Card assignee**: the person using a card. A corporate owns its cards; their assignees must be authorized users. For consumers, the owner and assignee are the same person.
+
+## Instruments and payments
+
+- **Managed account**: a stored-value account owned by a customer, with bank details assignable for external transfers. Available currencies depend on the programme/profile.
+- **Managed card**: a virtual or physical payment card. Prepaid cards have their own balance; debit cards spend from a linked managed account.
+- **Transfer**: movement between Weavr instruments owned by the same customer.
+- **Send**: movement to another customer's instrument or to a beneficiary, subject to the configured destination and authentication rules.
+- **Outgoing wire transfer (OWT)**: payment from a managed account to an external bank account.
+- **Incoming wire transfer (IWT)**: payment from an external bank account into a managed account.
+- **Trusted payee / beneficiary**: a saved trusted recipient and its bank or instrument details. Beneficiary remains in API paths. Trust may reduce SCA requirements; it doesn't universally bypass VoP confirmation.
+- **Linked account**: an external bank account linked to a customer under the programme's account-linking rules.
 
 ## Verification
 
-- **KYC (Know Your Customer)** — Identity verification for consumers. Checks identity documents, PEP status, and sanctions lists.
-- **KYB (Know Your Business)** — Business verification for corporates. Checks company registration, directors, UBOs, and compliance.
-- **UBO (Ultimate Beneficial Owner)** — An individual who ultimately owns or controls a corporate entity (typically 25%+ ownership).
-- **PEP (Politically Exposed Person)** — An individual in a prominent public role. Subject to enhanced due diligence.
+- **KYC**: personal due diligence for a consumer or a corporate stakeholder.
+- **KYB**: business due diligence, including company details, ownership, stakeholders, and account usage. The interactive KYB component is web-only.
+- **KYB pre-population**: optional server-side submission of company/ownership data, account-usage answers, and documents before KYB starts. It doesn't replace the root user's review and submission.
+- **UBO**: ultimate beneficial owner, the person who ultimately owns or controls a business. Use the onboarding flow's requirements for thresholds and evidence.
+- **PEP**: politically exposed person, subject to additional due diligence.
+- **VoP**: Verification of Payee for EUR SEPA OWTs. Qualifying corporate bulk payments can be opted out through a certified flow; single payments are always checked.
+- **CoP**: Confirmation of Payee for GBP payments. Its linked-account confirmation rules differ from EUR VoP.
 
-## Financial instruments
+## Keys and tokens
 
-- **Managed account** — A digital account that holds funds. Can have an IBAN assigned for receiving wire transfers. Supports GBP, EUR, and USD.
-- **Managed card** — A payment card (virtual or physical) linked to a managed account. Issued on Mastercard or Visa networks.
-- **Virtual card** — An instantly issued digital card for online transactions. No physical form factor.
-- **Physical card** / **Plastic card** — A printed card shipped to the cardholder. Requires activation after delivery.
+- **API key**: secret server credential in the Multi API's `api-key` header. The simulator accepts the API client key under `programme-key` instead.
+- **UI key**: public, environment-specific credential for SDK initialization. It isn't a REST API credential.
+- **Auth Token (`AUTH`)**: authenticates the user without choosing a customer. Exchange it for an Access Token after selecting an identity.
+- **Access Token (`ACCESS`)**: authenticates a user acting for a particular identity and carries that user's roles there. Use it for identity-scoped APIs and SDK association.
+- **Step-up**: additional authentication that makes an Access Token eligible for sensitive operations, including secure card display and PIN capture.
+- **SCA**: Strong Customer Authentication, used to authorize sensitive financial actions.
+- **Tokenized value**: opaque representation of a captured credential or sensitive card field. It isn't interchangeable with a session token or a card ID.
+- **Secure UI**: web or native SDK components that capture or display sensitive data inside secure views. Capture returns tokens; display resolves tokens inside the component.
 
-## Transactions
+## Environments and amounts
 
-- **Transfer** — An internal movement of funds between two managed accounts within the same programme.
-- **Send** — A payment to a third-party beneficiary outside the platform.
-- **Outgoing wire transfer (OWT)** — A bank transfer sent via SEPA, Faster Payments, or SWIFT to an external bank account.
-- **Incoming wire transfer** — A bank transfer received into a managed account from an external source.
-- **Beneficiary** — A saved third-party payee for sends and wire transfers.
+Sandbox Multi calls use `https://sandbox.weavr.io/multi`; live uses `https://secure.weavr.io/multi`. The sandbox-only simulator uses `https://sandbox.weavr.io/simulate/api`.
 
-## Authentication
-
-- **API key** — Server-side credential included in the `api-key` header. Used for all API requests.
-- **Programme key** — Identifies the specific programme configuration. Required when creating identities.
-- **Bearer token** — JWT issued after login (`POST /multi/login_with_password`). Represents an authenticated user session.
-- **Step-up authentication** — An additional OTP challenge required before sensitive operations (card display, PIN changes).
-- **SCA (Strong Customer Authentication)** — Regulatory requirement for two-factor authentication on certain financial operations.
-
-## Platform concepts
-
-- **Programme** — A configuration on the Weavr platform that defines which products (accounts, cards), currencies, limits, and features are available. Each programme has its own API key and programme key.
-- **Secure UI** — Weavr's client-side JavaScript SDK (`OpcUxSecureClient`) that handles sensitive data through tokenization. Ensures PCI compliance by keeping raw credentials off your servers.
-- **Tokenization** — The process of replacing sensitive data (passwords, card numbers, PINs) with secure tokens via the Secure UI SDK.
-- **UI key** — A client-side key used to initialize the Secure UI SDK. Different from the API key.
-- **Sandbox** — The test environment at `https://sandbox.weavr.io`. Supports simulator endpoints for testing.
-- **Simulator** — Sandbox-only API for simulating external events (deposits, card purchases, identity verification) that would normally come from banks or card networks.
-
-## Amount format
-
-All monetary amounts in the API use **minor units** (smallest currency denomination):
-
-| Display | API value | Currency |
-|---------|-----------|----------|
-| £10.00 | `1000` | GBP |
-| €25.50 | `2550` | EUR |
-| $100.00 | `10000` | USD |
+Monetary amounts use integer minor units: `1000` is GBP 10.00, `2550` is EUR 25.50, and `10000` is USD 100.00. Apply each currency's denomination rules rather than assuming every currency has two decimal places.

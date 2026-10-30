@@ -17,20 +17,20 @@ npx skills update
 
 ## Available skills
 
-| Skill | Description |
-|-------|-------------|
-| [weavr-api](./weavr-api/SKILL.md) | Multi API endpoints, authentication, request/response formats |
-| [weavr-simulator](./weavr-simulator/SKILL.md) | Sandbox testing — simulate deposits, purchases, KYC/KYB |
-| [weavr-components](./weavr-components/SKILL.md) | Secure UI components, tokenization, integration flows |
-| [weavr-glossary](./weavr-glossary/SKILL.md) | Platform terminology and concepts |
-| [weavr-sdk-web](./weavr-sdk-web/SKILL.md) | Web SDK setup, components, styling |
-| [weavr-sdk-android](./weavr-sdk-android/SKILL.md) | Android SDK, Gradle config, biometrics |
-| [weavr-sdk-ios](./weavr-sdk-ios/SKILL.md) | iOS SDK, SPM/CocoaPods, biometrics |
-| [weavr-sdk-react-native](./weavr-sdk-react-native/SKILL.md) | React Native/Expo, push provisioning |
+| Skill                                                       | Description                                                   |
+| ----------------------------------------------------------- | ------------------------------------------------------------- |
+| [weavr-api](./weavr-api/SKILL.md)                           | Weavr API endpoints, authentication, request/response formats |
+| [weavr-simulator](./weavr-simulator/SKILL.md)               | Sandbox testing - simulate deposits, purchases, KYC/KYB       |
+| [weavr-components](./weavr-components/SKILL.md)             | Secure UI components, tokenization, integration flows         |
+| [weavr-glossary](./weavr-glossary/SKILL.md)                 | Platform terminology and concepts                             |
+| [weavr-sdk-web](./weavr-sdk-web/SKILL.md)                   | Web SDK setup, components, styling                            |
+| [weavr-sdk-android](./weavr-sdk-android/SKILL.md)           | Android SDK, Gradle config, biometrics                        |
+| [weavr-sdk-ios](./weavr-sdk-ios/SKILL.md)                   | iOS SDK, SPM/CocoaPods, biometrics                            |
+| [weavr-sdk-react-native](./weavr-sdk-react-native/SKILL.md) | React Native/Expo, push provisioning                          |
 
 ## Contributing
 
-Skills are maintained in the [docs-weavr-io](https://github.com/weavr-io/docs-weavr-io) repository and published automatically on merge to `master`.
+Skills are maintained in the [docs-weavr-io](https://github.com/weavr-io/docs-weavr-io) repository and published automatically on merge to `main`.
 
 - **Curated skills** are written by the team. Mark with `curated: true` in frontmatter.
 - **Generated skills** are synthesised from documentation source by `scripts/generate-skills.js`.

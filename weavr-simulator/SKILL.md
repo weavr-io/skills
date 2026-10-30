@@ -2,24 +2,29 @@
 name: weavr-simulator
 description: Test Weavr integrations in sandbox by simulating deposits, card transactions, KYC/KYB verification, wire transfers, and 2FA challenges. Use when building or debugging against the Weavr sandbox environment.
 curated: true
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Weavr Simulator API
 
-API Reference: https://api.weavr.io/products/simulator/openapi
+API reference: https://docs.weavr.io/api/simulator/
+OpenAPI: https://docs.weavr.io/oas/simulator.json
 
 **Sandbox-only** testing tool for simulating financial operations that would normally come from external systems (bank transfers, card networks, identity verification providers).
 
-Base URL: `https://sandbox.weavr.io`
+Base URL: `https://sandbox.weavr.io/simulate/api`
+
+All paths below are relative to this base, not to `/multi`.
 
 ## Authentication
 
-All simulator endpoints require:
+Simulator endpoints require:
 
 ```
-api-key: {{api_secret_key}}    # API Secret Key (not the regular API key)
+programme-key: {{api_key}}    # API Secret Key from the portal API client
 ```
+
+The same API client key used as `api-key` for Multi calls goes in `programme-key` here. The 2FA challenge simulation endpoints also require `Authorization: Bearer {{token}}`.
 
 Optional `call-ref` header (max 255 chars) for request correlation.
 
@@ -28,15 +33,15 @@ Optional `call-ref` header (max 255 chars) for request correlation.
 ```typescript
 // 1. Simulate a deposit into a managed account
 const response = await fetch(
-  'https://sandbox.weavr.io/accounts/${accountId}/deposit',
+  `https://sandbox.weavr.io/simulate/api/accounts/${accountId}/deposit`,
   {
-    method: 'POST',
-    headers: { 'api-key': API_SECRET_KEY, 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "programme-key": API_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({
-      depositAmount: { currency: 'GBP', amount: 10000 },
-      senderName: 'Test Sender',
-      reference: 'Test deposit'
-    })
+      depositAmount: { currency: "GBP", amount: 10000 },
+      senderName: "Test Sender",
+      reference: "Test deposit",
+    }),
   }
 );
 // Response: { "code": "COMPLETED" }
@@ -71,8 +76,8 @@ POST /accounts/deposit                  Simulate incoming wire (by IBAN)
     "iban": "GB29NWBK60161331926819",
     "bankIdentifierCode": "NWBKGB2L"
   },
+  "senderName": "Sender Name",
   "senderIbanDetails": {
-    "name": "Sender Name",
     "iban": "DE89370400440532013000"
   },
   "paymentReference": "Payment reference",
@@ -104,7 +109,7 @@ POST /cards/{card_id}/renew             Simulate card renewal
   "transactionAmount": { "currency": "GBP", "amount": 2500 },
   "transactionCountry": "GBR",
   "atmWithdrawal": false,
-  "cardHolderPresent": true,
+  "cardHolderPresent": "PRESENT",
   "cardPresent": true
 }
 ```
@@ -159,7 +164,8 @@ POST /linked_accounts/{account_id}/verify   Verify linked account steps
 
 ## Common pitfalls
 
-- **Wrong API key**: Simulator uses the API **Secret** Key, not the regular API key.
+- **Wrong header or base path**: Use `programme-key` and `/simulate/api`, rather than the Multi API header and path.
+- **Deposit coverage**: Deposit by account ID skips parts of incoming wire processing. Use `/accounts/deposit` to exercise the complete IWT flow, including linked-account or forwarding behavior.
 - **Sandbox only**: These endpoints do not exist in production.
 - **Amount format**: Amounts are in minor units (e.g., `2500` = 25.00 GBP).
-- **KYC/KYB shortcut**: The verify endpoints skip the real verification flow entirely — useful for testing but does not exercise the Secure UI components.
+- **KYC/KYB shortcut**: The verify endpoints skip the real verification flow entirely - useful for testing but does not exercise the Secure UI components.

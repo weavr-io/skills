@@ -1,164 +1,84 @@
 ---
 name: weavr-sdk-ios
-description: Integrate Weavr Secure UI components into native iOS apps. Covers Swift Package Manager and CocoaPods setup, secure input and display components, KYC verification, biometric authentication, and push provisioning. Use when building iOS Weavr integrations.
+description: Integrate Weavr Secure UI into native iOS apps. Covers Swift Package Manager and CocoaPods setup, asynchronous initialization, secure capture and display, KYC, biometrics, and Apple Wallet provisioning. Use when building iOS Weavr integrations.
 curated: true
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Weavr iOS SDK
 
 Documentation: https://docs.weavr.io/sdks/ios/
 
-Native iOS SDK (Swift) for embedding PCI-compliant financial services components with biometric authentication support.
+## Install
 
-## Prerequisites
+Swift Package Manager is recommended. Add:
 
-- Xcode 16+
-- Swift 5.9+
-- Minimum iOS 15.1
-
-## Setup
-
-### Option 1: Swift Package Manager (recommended)
-
-File > Add Package Dependencies > Enter:
-
-```
+```text
 https://github.com/weavr-io/secure-components-ios.git
 ```
 
-### Option 2: CocoaPods
+Choose a supported release from the [version guide](https://docs.weavr.io/sdks/ios/versions/), with an iOS deployment target of at least 15.1.
+
+For CocoaPods, preserve existing sources and add Sumsub's spec repository:
 
 ```ruby
-# Podfile
-source 'https://cdn.cocoapods.org'
-source 'https://github.com/nicklockwood/iVersion.git'
+source 'https://cdn.cocoapods.org/'
+source 'https://github.com/sumsub/Specs.git'
+platform :ios, '15.1'
+use_frameworks! :linkage => :dynamic
 
-pod 'WeavrComponents'
-pod 'Approov', :podspec => 'https://raw.githubusercontent.com/nicklockwood/iVersion/master/Approov.podspec'
+pod 'ApproovURLSession', '~> 3.3.3'
+pod 'WeavrComponents', '~> 3.0'
+pod 'IdensicMobileSDK', '~> 1.41.0'
+pod 'Firebase/Analytics'
+pod 'Firebase/Core'
+pod 'Firebase/Messaging'
+pod 'FirebaseAppCheck'
 ```
 
-### Required permissions (Info.plist)
+Match dependency versions to the SDK release being integrated. Configure the documented camera, photo library, microphone, location, and Face ID usage descriptions for verification and biometric features.
 
-```xml
-<key>NSPhotoLibraryUsageDescription</key>
-<string>Upload identity documents</string>
-<key>NSCameraUsageDescription</key>
-<string>Capture identity documents and selfie</string>
-<key>NSMicrophoneUsageDescription</key>
-<string>Required for video verification</string>
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>Verify your location during onboarding</string>
-<key>NSFaceIDUsageDescription</key>
-<string>Authenticate with Face ID</string>
-```
+## Initialize
 
-### Initialize
+Start initialization during the app's launch lifecycle and await the result before mounting components:
 
 ```swift
 import WeavrComponents
 
-// Set Firebase App Check token (if using biometrics)
-UXComponents.setAppCheckToken(token)
-
-// Initialize
-UXComponents.initialize(env: .SANDBOX, uiKey: "your_ui_key")
-```
-
-## Components
-
-### Input components
-
-```swift
-// Password field
-let passwordField = SecurePasswordField()
-passwordField.placeholder = "Enter password"
-view.addSubview(passwordField)
-
-// Passcode field
-let passcodeField = SecurePasscodeField()
-view.addSubview(passcodeField)
-
-// Segmented passcode (PIN-style boxes)
-let segmentedPasscode = SecurePasscodeFieldStack()
-view.addSubview(segmentedPasscode)
-
-// Tokenize
-passwordField.tokenize { token in
-    // Send token to your server
-}
-```
-
-### Display components
-
-```swift
-// Card number
-let cardNumber = SecureCardNumberTextView()
-cardNumber.cardId = "card_id"
-cardNumber.accessToken = bearerToken
-view.addSubview(cardNumber)
-
-// CVV
-let cvv = SecureCVVTextView()
-cvv.cardId = "card_id"
-cvv.accessToken = bearerToken
-view.addSubview(cvv)
-
-// Card PIN
-let cardPin = SecureCardPINTextView()
-cardPin.cardId = "card_id"
-cardPin.accessToken = bearerToken
-view.addSubview(cardPin)
-```
-
-### Biometric authentication
-
-```swift
-// Enroll
-UXComponents.psa.enroll { result in
-    switch result {
-    case .success:
-        // Enrolled
-    case .failure(let error):
-        // Handle error
-    }
-}
-
-// Authenticate
-UXComponents.psa.authenticate { result in
-    switch result {
-    case .success(let token):
-        // Use token for API calls
-    case .failure:
-        // Fallback to passcode
-    }
-}
-```
-
-## Theming
-
-```swift
-let branding = BrandingConfig(
-    primaryColor: UIColor(hex: "#1A73E8"),
-    textColor: UIColor(hex: "#333333"),
-    font: UIFont(name: "CustomFont", size: 16),
-    buttonCornerRadius: 8
+let result = await UXComponents.initialize(
+    environment: .Sandbox,
+    uiKey: "YOUR_UI_KEY"
 )
-UXComponents.setBranding(branding)
 ```
 
-## Storyboard integration
+Handle every `InitializationResult` case: `.initialized`, `.serverError`, `.networkFailure`, `.setupError`, and `.failure`. On success, inspect `userNeedsRelogin` and require a fresh login when set. Preserve `traceability` for support; `authenticationType` describes the project's configured authentication mode. Use the exact [result signatures](https://docs.weavr.io/sdks/ios/get-started/) for the chosen release.
 
-Components can also be added via Interface Builder:
-1. Add a UIView to your storyboard
-2. Set the class to the desired component (e.g., `SecurePasswordField`)
-3. Set the module to `WeavrComponents`
-4. Configure properties via the Attributes inspector
+Retrieve a valid Firebase App Check token before sensitive login or enrollment operations and pass it to `UXComponents.setAppCheckToken(token)`. Check its `Bool` result; an empty string isn't a production token.
 
-## Common pitfalls
+## Capture and display
 
-- **Permissions required**: KYC components need camera, photo library, and location permissions — missing these causes silent failures.
-- **Dynamic linking**: Approov framework requires dynamic linking — ensure "Embed & Sign" is set in Xcode.
-- **Firebase required**: Biometric auth and push provisioning need Firebase App Check configured.
-- **Initialize before use**: Call `UXComponents.initialize()` in `AppDelegate` or early in the app lifecycle.
-- **Step-up for display**: Card number, CVV, and PIN display require step-up authentication first.
+| Purpose | Class or API |
+| ------- | ------------ |
+| Password | `SecurePasswordField` |
+| Password confirmation | Collection of fields with `secureInputsMatch` |
+| Credential tokenization | `await field.tokenise()` |
+| PAN display | `SecureCardNumberLabel` |
+| CVV display | `SecureCVVLabel` |
+| PIN display | `SecureCardPinLabel` |
+| PIN capture | `SecureCardPinField` |
+
+Use passwords for iOS authentication; numeric authentication passcodes aren't permitted. An optional `isVisibilityButtonEnabled` toggle reveals the password visually without exposing a plaintext accessor.
+
+After login, associate the Access Token using `await UXComponents.setUserToken(token: token)` and handle `AssociateTokenResult`. All card components require step-up. Fetch tokenized values from your server and use `detokenise(_:)` with the [documented result handling](https://docs.weavr.io/sdks/ios/card-components/). These labels don't take `cardId` and `accessToken` properties as a substitute for tokenized values.
+
+Reveal sensitive fields only on request and remove or hide them promptly afterward. Clipboard copying is opt-in and places plain text outside the secure view.
+
+## KYC and biometrics
+
+Consumer KYC uses the native verification component; corporate KYB is web-only and needs a web handoff.
+
+Complete the [biometric setup](https://docs.weavr.io/sdks/ios/biometrics/) before enrollment, including programme, notification, and integrity configuration. After the main SDK initializes, call `UXComponents.psa.initialize()` and keep the FCM token current through `UXComponents.psa.updateFCMToken(...)`. Use `UXComponents.psa.startEnrollment(viewController:)` for enrollment and `await UXComponents.psa.startBiometricLogin(viewController:)` for login, following the [enrollment and login guide](https://docs.weavr.io/sdks/ios/biometrics-enrollment-login/). Biometric login requires exchanging the Auth Token for an identity-scoped Access Token. Provide password fallback.
+
+## Apple Wallet
+
+Push provisioning has separate SDK dependencies, entitlement approval, configuration, and Wallet Extension requirements. Arrange Weavr setup first, then follow [push provisioning setup](https://docs.weavr.io/sdks/ios/push-provisioning/setup/) and [implementation](https://docs.weavr.io/sdks/ios/push-provisioning/implementation/). Don't assume installing Secure Components enables wallet provisioning.

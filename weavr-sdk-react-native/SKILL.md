@@ -1,218 +1,99 @@
 ---
 name: weavr-sdk-react-native
-description: Integrate Weavr Secure UI components into React Native and Expo apps. Covers installation, platform-specific setup, secure input and display components, biometric auth, and push provisioning for Apple and Google Wallet. Use when building cross-platform Weavr integrations.
+description: Integrate Weavr Secure UI and push provisioning into React Native or Expo apps. Covers Expo Modules, native dependencies, tokenized components, biometric setup, and Apple/Google Wallet provisioning. Use when building cross-platform Weavr integrations.
 curated: true
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Weavr React Native SDK
 
 Documentation: https://docs.weavr.io/sdks/react-native/
 
-Cross-platform SDK for React Native and Expo apps, providing secure financial components on both iOS and Android with a unified API.
+## Install Secure Components
 
-## Prerequisites
-
-- React Native 0.75–0.81
-- React 18.3–19
-- Expo 51–54 (if using Expo)
-
-## Setup
-
-### 1. Install
+The SDK is an Expo Module and needs the Expo Modules runtime even in bare React Native apps. This doesn't require migrating the app to managed Expo.
 
 ```bash
-npm install @weavr-io/secure-components-react-native
-# or
-yarn add @weavr-io/secure-components-react-native
+# Bare React Native, when Expo Modules aren't wired up yet:
+npx install-expo-modules
+npm install expo @weavr-io/secure-components-react-native
 ```
 
-### 2. iOS configuration (Podfile)
+Expo Go cannot load the native SDK dependencies. Use a native build or a custom development client, and rebuild after native configuration changes. Check [versions](https://docs.weavr.io/sdks/react-native/versions/) and the selected release's compatibility table instead of assuming broad React Native/Expo version ranges.
 
-```ruby
-source 'https://cdn.cocoapods.org'
-source 'https://github.com/nicklockwood/iVersion.git'
+## Native configuration
 
-# Add in your target block
-pod 'Approov', :podspec => '...'
-```
+Every integration needs native dependencies, regardless of the features used:
 
-Then run `cd ios && pod install`.
+- iOS: preserve existing Podfile sources, add `https://github.com/sumsub/Specs.git` alongside the CocoaPods CDN, and add `pod 'IdensicMobileSDK', '~> 1.41.0'` in the app target.
+- Pin CocoaPods to `1.17.0` or later through a Gemfile and use `bundle exec pod install`, especially when the app and a Wallet Extension share Weavr frameworks. Older embedding behavior can cause launch-time `dyld` errors.
+- Android: keep `google()` and `mavenCentral()`, and add the Sumsub, Okay/GitLab, Flutter, and legacy repository entries from [Get started](https://docs.weavr.io/sdks/react-native/get-started/). Redirect all `org.bouncycastle` dependencies to `org.bouncycastle:bcprov-jdk15to18:1.68` using `resolutionStrategy.eachDependency`.
+- Add OS permissions only for features used. Firebase notification/integrity setup applies to biometric features; it isn't a universal prerequisite for every secure component.
+- Managed Expo: configure the SDK plugin and `expo-build-properties` per Get started. Rebuild the development client after plugin changes.
+- Xcode 26 currently needs the documented `fmt`/`consteval` Podfile workaround. Use [the troubleshooting guide](https://docs.weavr.io/sdks/react-native/errors#xcode-26-build-failure) rather than changing unrelated dependencies.
 
-### 3. Android configuration (build.gradle)
-
-```groovy
-// android/build.gradle
-allprojects {
-    repositories {
-        mavenCentral()
-    }
-}
-
-// android/app/build.gradle
-configurations.all {
-    resolutionStrategy {
-        force "org.bouncycastle:bcprov-jdk15to18:1.68"
-    }
-}
-```
-
-### 4. Firebase setup
-
-- Android: Add `google-services.json` to `android/app/`
-- iOS: Add `GoogleService-Info.plist` to Xcode project
-
-### 5. Expo-specific configuration
-
-```javascript
-// react-native.config.js
-module.exports = {
-  assets: ['./node_modules/@weavr-io/secure-components-react-native/assets'],
-};
-```
-
-```typescript
-// app.config.ts — add required permissions
-{
-  ios: {
-    infoPlist: {
-      NSCameraUsageDescription: "Capture identity documents",
-      NSPhotoLibraryUsageDescription: "Upload identity documents",
-      NSFaceIDUsageDescription: "Authenticate with Face ID"
-    }
-  }
-}
-```
-
-### 6. Initialize
+## Initialize and associate
 
 ```typescript
 import {
   initializeUXComponents,
   initializePSA,
   setAppCheckToken,
-  Environment,
-} from '@weavr-io/secure-components-react-native';
+  setUserToken,
+} from "@weavr-io/secure-components-react-native";
 
-// Set App Check token (if using biometrics)
-setAppCheckToken("");
-
-// Initialize
-initializeUXComponents(Environment.SANDBOX, "your_ui_key");
-initializePSA(Environment.SANDBOX);
+await initializeUXComponents(env, uiKey);
+// For biometric features, with the documented environment and Firebase setup:
+setAppCheckToken(appCheckToken);
+await initializePSA(env);
+// After obtaining an identity-scoped Access Token:
+await setUserToken(accessToken);
 ```
 
-## Components
+Use a valid App Check token before sensitive operations and check the boolean acceptance result. Handle `AUTH` versus `ACCESS` from login; a method parameter named `authToken` doesn't imply an Auth Token is valid for financial operations.
 
-### Input components
+## Secure components
 
-```tsx
-import {
-  SecurePasswordTextField,
-  SecurePasscodeTextField,
-  SecureSegmentedPasscodeTextField,
-} from '@weavr-io/secure-components-react-native';
+| Purpose | Component or method |
+| ------- | ------------------- |
+| Password | `SecurePasswordTextField` |
+| Token creation | `ref.current.createToken()` with `onCreateToken` |
+| Passcode | `SecurePasscodeTextField`, `SecureSegmentedPasscodeTextField` (Android authentication only) |
+| PAN display | `SecureCardNumberLabel` |
+| CVV display | `SecureCardCVVLabel` |
+| PIN display | `SecureCardPinLabel` |
 
-// Password
-<SecurePasswordTextField
-  placeholder="Enter password"
-  onTokenize={(token) => {
-    // Send token to your server
-  }}
-/>
+Associate a stepped-up Access Token before mounting any card component. Supply the tokenized value as `toDetokenize`, hold a ref, and call `deTokenize()` to reveal it. Don't pass `cardId` and `accessToken` as replacements for the tokenized value. Follow the [card examples](https://docs.weavr.io/sdks/react-native/card-components/) for callbacks and ref handling.
 
-// Passcode
-<SecurePasscodeTextField
-  placeholder="Enter passcode"
-  onTokenize={(token) => { /* ... */ }}
-/>
+Use `isVisibilityButtonEnabled` for the optional password visibility toggle. `copyOnClick` and `copyOnLongClick` on card display labels enable clipboard copying, which is off by default and writes plain text to the system clipboard.
 
-// Segmented passcode (PIN-style boxes)
-<SecureSegmentedPasscodeTextField
-  onTokenize={(token) => { /* ... */ }}
-/>
+Passcode authentication is Android-only; use password on iOS. Component styling props differ by platform. KYB is web-only, so corporate onboarding needs a web handoff.
+
+## Push provisioning
+
+Install the separate wallet package:
+
+```bash
+npm install @weavr-io/push-provisioning-react-native
 ```
 
-### Display components
+Arrange Weavr configuration first. For React Native push provisioning 4.x, the iOS pod tag is `2.0.0`, not the React Native package version. Later release notes identify changes to that mapping. Install the private pod with the supplied token kept out of source control.
 
-```tsx
-import {
-  SecureCardNumberLabel,
-  SecureCardCVVLabel,
-  SecureCardPINLabel,
-} from '@weavr-io/secure-components-react-native';
-
-// Card number
-<SecureCardNumberLabel
-  cardId="card_id"
-  accessToken={bearerToken}
-/>
-
-// CVV
-<SecureCardCVVLabel
-  cardId="card_id"
-  accessToken={bearerToken}
-/>
-
-// Card PIN
-<SecureCardPINLabel
-  cardId="card_id"
-  accessToken={bearerToken}
-/>
-```
-
-### Push provisioning (Apple Pay and Google Pay)
-
-```tsx
-import { AddToWalletButton } from '@weavr-io/secure-components-react-native';
-
-<AddToWalletButton
-  cardId="card_id"
-  accessToken={bearerToken}
-  onSuccess={() => { /* Card added to wallet */ }}
-  onError={(error) => { /* Handle error */ }}
-/>
-```
-
-Requires certification from Apple and Google — contact Weavr Support.
-
-### Biometric authentication
+Include the extensionless `provisioning_config` in `android/app/src/main/res/raw/` and in the iOS app bundle plus relevant Wallet Extension targets. Add Android application metadata `com.google.android.gms.wallet.api.enabled=true`. Follow [setup](https://docs.weavr.io/sdks/react-native/push-provisioning/setup/) for entitlements, App Groups, signing, and native dependencies.
 
 ```typescript
-import { PSA } from '@weavr-io/secure-components-react-native';
+import {
+  initializeWeavrSDK,
+  isGooglePayAvailable,
+  getCardStatusInWallet,
+} from "@weavr-io/push-provisioning-react-native";
 
-// Enroll
-const enrollResult = await PSA.enroll();
-
-// Authenticate
-const authResult = await PSA.authenticate();
-if (authResult.success) {
-  const token = authResult.token; // Use for API calls
-}
+initializeWeavrSDK({ uiKey }); // Synchronous
+const googlePayAvailable = isGooglePayAvailable(); // Synchronous, for Android
+const state = await getCardStatusInWallet(lastFour, "either");
+const canShowButton = state === "notAdded" || state === "requiresActivation";
 ```
 
-## Platform-specific styling
+Import `AddToWalletButton` from the push provisioning package. Its integration uses `authenticationToken`, `cardId`, `cardLastFour`, `cardHolderName`, `cardDescription`, `iOSButtonStyle`, `androidAssetSource`, and `onComplete({ error, value })`. Give it explicit dimensions and display it only when the wallet is available and the card state permits it.
 
-```tsx
-// Android-specific props
-<SecurePasswordTextField
-  enableBorder={true}
-  activeFieldBorderColor="#2196f3"
-  inactiveFieldBorderColor="#cccccc"
-/>
-
-// iOS-specific props
-<SecurePasswordTextField
-  placeholder="Enter password"
-  fieldBackgroundColor="#f5f5f5"
-/>
-```
-
-## Common pitfalls
-
-- **BouncyCastle on Android**: Pin version 1.68 to avoid Approov conflicts.
-- **Pod install**: Run `cd ios && pod install` after installing the package.
-- **Firebase required**: Both platforms need Firebase configured for biometrics and push provisioning.
-- **Expo assets**: Export the asset path in `react-native.config.js` or fonts won't load.
-- **Push provisioning certification**: Requires a 30-day minimum lead time with Apple/Google — plan ahead.
-- **Step-up for display**: Card display components require step-up auth before they render.
+For a custom trigger, subscribe with `onCardProvisioningResult(cardId, callback)` before calling `addCardToWallet`, and unsubscribe on unmount. Use the exact argument order and event signatures from [implementation](https://docs.weavr.io/sdks/react-native/push-provisioning/implementation/).
